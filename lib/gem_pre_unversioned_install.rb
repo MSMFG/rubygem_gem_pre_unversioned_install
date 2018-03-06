@@ -50,7 +50,7 @@ Gem.pre_install do |installer|
   # so we allow our plugins to do the same and trigger this behaviour
   rval = nil
   Gem._unversioned_hooks.each do |hook|
-    break unless (rval = hook.call(spec.name, spec.version))
+    break if false == (rval = hook.call(spec.name, spec.version))
   end
   rval
 end
