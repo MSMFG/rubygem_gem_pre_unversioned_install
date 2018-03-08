@@ -1,5 +1,6 @@
 # Gem.pre_unversioned_install hook
 require 'rubygems'
+require 'rubygems/dependency'
 
 # Extend Gem module
 module Gem
@@ -22,19 +23,32 @@ module Gem
     @_unversioned_hooks |= [hook]
   end
 
-  # Reader only
-  def self._unversioned_hooks
-    # dup to protect collection integrity
-    @_unversioned_hooks.dup
+  # Dispatch unversioned hooks
+  def self.fire_unversioned_hooks(name, version)
+    rval = nil
+    # pre_install hooks can cause gem install to abort if they return false
+    # so we allow our plugins to do the same and trigger this behaviour
+    @_unversioned_hooks.each do |hook|
+      break if (rval = hook.call(name, version)) == false
+    end
+    rval
   end
 
-  # Monkey patch to capture gem name if latest_version? true
-  class Dependency
-    alias _latest_version? latest_version?
+  # Monkey patch through subclassing
+  class Dependency < remove_const(:Dependency)
 
-    # Stash any unversioned dependencies encountered
+    # Newer RubyGems use >=0 as a default requirement
+    def initialize(_name, *requirements)
+      super
+      return unless requirements.find do |req|
+        req.is_a?(Requirement) && req.none?
+      end
+      Gem.unversioned(@name)
+    end
+
+    # For older RubyGems versions
     def latest_version?
-      if (res = _latest_version?)
+      if (res = super)
         Gem.unversioned(@name)
       end
       res
@@ -46,11 +60,5 @@ end
 Gem.pre_install do |installer|
   spec = installer.spec
   next unless Gem.unversioned?(spec.name)
-  # pre_install hooks can cause gem install to abort if they return false
-  # so we allow our plugins to do the same and trigger this behaviour
-  rval = nil
-  Gem._unversioned_hooks.each do |hook|
-    break unless (rval = hook.call(spec.name, spec.version))
-  end
-  rval
+  Gem.fire_unversioned_hooks(spec.name, spec.version)
 end
