@@ -36,7 +36,6 @@ module Gem
 
   # Monkey patch through subclassing
   class Dependency < remove_const(:Dependency)
-
     # Newer RubyGems use >=0 as a default requirement
     def initialize(_name, *requirements)
       super
