@@ -47,10 +47,10 @@ module Gem
 
     # For older RubyGems versions
     def latest_version?
-      if (res = super)
+      if (rval = super)
         Gem.unversioned(@name)
       end
-      res
+      rval
     end
   end
 end
